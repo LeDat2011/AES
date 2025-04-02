@@ -40,7 +40,3 @@ if __name__ == "__main__":
             self.iv_label.grid()
             self.iv_entry.grid()
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = AESEncryptionApp(root)
-    root.mainloop()

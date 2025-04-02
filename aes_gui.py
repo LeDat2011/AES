@@ -302,10 +302,17 @@ class AESEncryptionApp:
 
             input_file = self.input_file_entry.get().strip()
             output_file = self.output_file_entry.get().strip()
-            key, iv = self.get_key_iv_from_entries()
+            key, _ = self.get_key_iv_from_entries()  # Chỉ lấy key
 
-            if key is None or iv is None:
+            if key is None:
                 return
+
+            # Tạo IV mới cho mỗi lần mã hóa
+            new_iv = os.urandom(16)
+
+            # Cập nhật IV trong giao diện
+            self.iv_entry.delete(0, tk.END)
+            self.iv_entry.insert(0, base64.b64encode(new_iv).decode())
 
             # Cập nhật trạng thái
             self.status_var.set("Đang mã hóa...")
@@ -316,8 +323,8 @@ class AESEncryptionApp:
             mode = self.mode_var.get()
             key_length = int(self.key_length_var.get())
 
-            # Thực hiện mã hóa
-            self.encrypt_file(input_file, output_file, key, iv)
+            # Thực hiện mã hóa với IV mới
+            self.encrypt_file(input_file, output_file, key, new_iv)
 
             # Tính toán thông số
             encryption_time = time.time() - start_time
@@ -335,7 +342,8 @@ class AESEncryptionApp:
                 f"{'=' * 30}\n"
                 f"Thời gian: {current_time}\n"
                 f"Mode: {mode}\n"
-                f"Độ dài khóa: AES-{key_length}\n\n"
+                f"Độ dài khóa: AES-{key_length}\n"
+                f"IV mới: {new_iv.hex()}\n\n"  # Thêm thông tin IV mới
                 f"File gốc: {input_file}\n"
                 f"↳ Kích thước: {input_size:,} bytes\n\n"
                 f"File mã hóa: {output_file}\n"
@@ -471,12 +479,15 @@ class AESEncryptionApp:
             # Mã hóa dữ liệu
             if mode == "CBC":
                 encrypted_data = cipher.encrypt_cbc(data, iv)
+
+                # Lưu IV vào đầu file mã hóa
+                with open(output_file, 'wb') as f:
+                    f.write(iv)  # Lưu IV 16 bytes đầu tiên
+                    f.write(encrypted_data)  # Tiếp theo là dữ liệu mã hóa
             else:  # ECB mode
                 encrypted_data = cipher.encrypt_ecb(data)
-
-            # Lưu file mã hóa
-            with open(output_file, 'wb') as f:
-                f.write(encrypted_data)
+                with open(output_file, 'wb') as f:
+                    f.write(encrypted_data)
 
             # Hiển thị kết quả hex
             hex_view = (
@@ -484,9 +495,10 @@ class AESEncryptionApp:
                 f"{'=' * 50}\n"
                 f"Mode: {mode}\n"
                 f"File: {output_file}\n"
+                f"IV: {iv.hex()}\n"  # Thêm thông tin IV
                 f"Độ dài: {len(encrypted_data)} bytes\n"
                 f"{'=' * 50}\n\n"
-                f"{self.format_hex_data(encrypted_data[:256])}\n\n"  # Hiển thị 256 bytes đầu
+                f"{self.format_hex_data(encrypted_data[:256])}\n\n"
                 f"... (còn tiếp)\n"
             )
             self.hex_text.delete(1.0, tk.END)
@@ -502,14 +514,19 @@ class AESEncryptionApp:
         try:
             # Đọc file mã hóa
             with open(input_file, 'rb') as f:
-                encrypted_data = f.read()
+                if self.mode_var.get() == "CBC":
+                    # Đọc IV từ 16 bytes đầu tiên
+                    iv = f.read(16)
+                    # Đọc phần còn lại là dữ liệu mã hóa
+                    encrypted_data = f.read()
+                else:
+                    encrypted_data = f.read()
+                    iv = bytes([0] * 16)  # IV giả cho ECB mode
 
             cipher = AES(key)
-            mode = self.mode_var.get()
 
             # Giải mã dữ liệu
-            if mode == "CBC":
-                iv = base64.b64decode(self.iv_entry.get().strip())
+            if self.mode_var.get() == "CBC":
                 decrypted_data = cipher.decrypt_cbc(encrypted_data, iv)
             else:  # ECB mode
                 decrypted_data = cipher.decrypt_ecb(encrypted_data)
@@ -522,11 +539,12 @@ class AESEncryptionApp:
             hex_view = (
                 f"DỮ LIỆU GIẢI MÃ (HEX VIEW)\n"
                 f"{'=' * 50}\n"
-                f"Mode: {mode}\n"
+                f"Mode: {self.mode_var.get()}\n"
                 f"File: {output_file}\n"
+                f"IV: {iv.hex()}\n"  # Thêm thông tin IV
                 f"Độ dài: {len(decrypted_data)} bytes\n"
                 f"{'=' * 50}\n\n"
-                f"{self.format_hex_data(decrypted_data[:256])}\n\n"  # Hiển thị 256 bytes đầu
+                f"{self.format_hex_data(decrypted_data[:256])}\n\n"
                 f"... (còn tiếp)\n"
             )
             self.hex_text.delete(1.0, tk.END)
