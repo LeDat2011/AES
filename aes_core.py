@@ -255,14 +255,14 @@ class AES:
         decrypted_data = b''.join(decrypted_blocks)
         return self.unpad(decrypted_data)
 
-    def encrypt(self, data):
-        """Mã hóa dữ liệu"""
-        data = self.pad(data)
-        return b''.join(self.encrypt_block(data[i:i + 16]) for i in range(0, len(data), 16))
-
-    def decrypt(self, data):
-        """Giải mã dữ liệu"""
-        return self.unpad(b''.join(self.decrypt_block(data[i:i + 16]) for i in range(0, len(data), 16)))
+    # def encrypt(self, data):
+    #     """Mã hóa dữ liệu"""
+    #     data = self.pad(data)
+    #     return b''.join(self.encrypt_block(data[i:i + 16]) for i in range(0, len(data), 16))
+    #
+    # def decrypt(self, data):
+    #     """Giải mã dữ liệu"""
+    #     return self.unpad(b''.join(self.decrypt_block(data[i:i + 16]) for i in range(0, len(data), 16)))
 
 
 
